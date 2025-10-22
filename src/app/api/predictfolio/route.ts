@@ -90,10 +90,18 @@ async function predictFolioAPI(limit: number = 24): Promise<Array<{ title: strin
     // compute yes chance
     let yes: number | undefined;
     const outcomes = tryParseArr<string>(m?.outcomes) || tryParseArr<string>(m?.shortOutcomes);
-    const prices = tryParseArr<number>(m?.outcomePrices);
-    if (outcomes && prices) {
+    let prices = tryParseArr<any>(m?.outcomePrices);
+    if (Array.isArray(prices)) {
+      prices = prices.map((p: any) => typeof p === 'string' ? parseFloat(p) : (typeof p === 'number' ? p : NaN));
+    }
+    if (outcomes && Array.isArray(prices)) {
       const idx = outcomes.findIndex((o)=>String(o).toLowerCase()==='yes');
-      if (idx>=0 && typeof prices[idx]==='number') yes = prices[idx];
+      const val = idx>=0 ? prices[idx] : undefined;
+      if (typeof val === 'number' && !Number.isNaN(val)) yes = val;
+    }
+    // Fallback: assume first price corresponds to YES when outcomes are missing
+    if (yes === undefined && Array.isArray(prices) && typeof prices[0] === 'number' && !Number.isNaN(prices[0])) {
+      yes = prices[0];
     }
     const pct = typeof yes === 'number' ? (yes <= 1 ? yes*100 : yes) : undefined;
 

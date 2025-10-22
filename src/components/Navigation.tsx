@@ -11,17 +11,8 @@ export function Navigation() {
           </Link>
           
           <div className="flex gap-4">
-            <Link href="/markets">
-              <Button variant="ghost">Markets</Button>
-            </Link>
             <Link href="/breaking">
               <Button variant="ghost">Breaking</Button>
-            </Link>
-            <Link href="/sports">
-              <Button variant="ghost">Sports</Button>
-            </Link>
-            <Link href="/traders">
-              <Button variant="ghost">Traders</Button>
             </Link>
             <Link href="/leaderboard">
               <Button variant="ghost">Leaderboard</Button>
