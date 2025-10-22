@@ -12,7 +12,7 @@ import { ArrowRight, Trophy } from "lucide-react";
 export default function Home() {
   const [topOpportunities, setTopOpportunities] = useState<ArbitrageOpportunity[]>([]);
   const [pfCards, setPfCards] = useState<Array<{title:string;url:string;image?:string;chance?:string}>>([]);
-  const [topThree, setTopThree] = useState<Array<{ rank:number; name:string; pnl:string; avatar?:string; profileUrl?:string }>>([]);
+  const [topThree, setTopThree] = useState<Array<{ rank:number; name:string; pnl:string; avatar?:string; address?:string; profileUrl?:string }>>([]);
   const [topLoading, setTopLoading] = useState<boolean>(true);
   const [stats, setStats] = useState<{
     totalOpportunities: number;
@@ -62,6 +62,7 @@ export default function Home() {
           name: r.name,
           pnl: r.pnl,
           avatar: r.avatar,
+          address: r.address,
           profileUrl: r.profileUrl,
         }));
         setTopThree(top);
@@ -148,7 +149,7 @@ export default function Home() {
                   const c = colors[idx] || colors[2];
                   const pnlPositive = (t.pnl || '').startsWith('+$');
                   return (
-                    <a key={t.rank} href={t.profileUrl || '#'} target="_blank" rel="noopener noreferrer" className={`border rounded-lg ${c.bg} hover:shadow-md transition ring-1 ${c.ring} aspect-square w-36 md:w-44 flex flex-col items-center justify-center text-center p-2`}>
+                    <Link key={t.rank} href={t.address ? `/user/${t.address}` : (t.profileUrl || '#')} className={`border rounded-lg ${c.bg} hover:shadow-md transition ring-1 ${c.ring} aspect-square w-36 md:w-44 flex flex-col items-center justify-center text-center p-2`}>
                       <div className="flex items-center gap-2 mb-2">
                         <div className={`w-7 h-7 rounded-full bg-muted flex items-center justify-center ${c.icon}`}><Trophy className="w-3.5 h-3.5" /></div>
                         <span className="text-xs text-muted-foreground">{c.label}</span>
@@ -162,7 +163,7 @@ export default function Home() {
                         <div className="font-semibold truncate max-w-[140px] mx-auto">{t.name}</div>
                         <div className={`text-base font-bold ${pnlPositive ? 'text-green-600' : 'text-red-600'}`}>{t.pnl}</div>
                       </div>
-                    </a>
+                    </Link>
                   );
                 })}
                 {topLoading && topThree.length === 0 && [0,1,2].map((i) => (
