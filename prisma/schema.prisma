@@ -1,0 +1,168 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(cuid())
+  email         String          @unique
+  username      String          @unique
+  passwordHash  String
+  avatar        String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  // Relations
+  watchlist     WatchlistItem[]
+  
+  @@map("users")
+}
+
+model Market {
+  id                String   @id @default(cuid())
+  platform          String   // 'polymarket' | 'kalshi'
+  externalId        String   // Platform-specific ID
+  title             String
+  category          String?
+  description       String?
+  
+  // Prices (normalized to 0-100 scale)
+  yesPrice          Float?
+  noPrice           Float?
+  
+  // Market metadata
+  volume24h         Float?
+  liquidity         Float?
+  endDate           DateTime?
+  url               String?
+  lastUpdated       DateTime  @default(now())
+  
+  // Additional metadata as JSON
+  tags              Json?
+  metadata          Json?
+  
+  // Relations
+  watchedBy         WatchlistItem[]
+  trades            Trade[]
+  
+  @@unique([platform, externalId])
+  @@index([platform])
+  @@index([category])
+  @@index([endDate])
+  @@map("markets")
+}
+
+model ArbitrageOpportunity {
+  id                String   @id @default(cuid())
+  marketTitle       String
+  
+  // Polymarket data
+  polymarketId      String?
+  polymarketPrice   Float
+  polymarketUrl     String?
+  
+  // Kalshi data
+  kalshiId          String?
+  kalshiPrice       Float
+  kalshiUrl         String?
+  
+  // Arbitrage calculations
+  priceDifference   Float    // Absolute difference
+  percentageGap     Float    // Percentage difference
+  potentialProfit   Float    // Estimated profit for $100
+  
+  // Status
+  status            String   @default("active") // 'active' | 'expired'
+  detectedAt        DateTime @default(now())
+  expiresAt         DateTime?
+  
+  @@index([status, detectedAt])
+  @@index([percentageGap])
+  @@map("arbitrage_opportunities")
+}
+
+model TrackedTrader {
+  id                String   @id @default(cuid())
+  platform          String   // 'polymarket' | 'kalshi'
+  walletAddress     String?  // For Polymarket
+  userId            String?  // For Kalshi
+  username          String?
+  
+  // Statistics
+  totalTrades       Int      @default(0)
+  winRate           Float    @default(0)
+  totalPnL          Float    @default(0)
+  avgReturn         Float    @default(0)
+  
+  // Performance history as JSON
+  performanceHistory Json?
+  
+  // Metadata
+  followers         Int      @default(0)
+  lastUpdated       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  
+  // Relations
+  trades            Trade[]
+  
+  @@unique([platform, walletAddress])
+  @@unique([platform, userId])
+  @@index([platform])
+  @@index([totalPnL])
+  @@index([winRate])
+  @@map("tracked_traders")
+}
+
+model Trade {
+  id          String   @id @default(cuid())
+  traderId    String
+  trader      TrackedTrader @relation(fields: [traderId], references: [id], onDelete: Cascade)
+  
+  platform    String   // 'polymarket' | 'kalshi'
+  marketId    String?
+  market      Market?  @relation(fields: [marketId], references: [id], onDelete: SetNull)
+  marketName  String
+  
+  // Trade details
+  side        String   // 'yes' | 'no'
+  entryPrice  Float
+  exitPrice   Float?
+  pnl         Float?
+  size        Float    // Number of shares or investment amount
+  
+  // Timestamps
+  openedAt    DateTime
+  closedAt    DateTime?
+  status      String   @default("open") // 'open' | 'closed'
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([traderId, status])
+  @@index([platform])
+  @@index([openedAt])
+  @@map("trades")
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  marketId  String
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  
+  platform  String   // 'polymarket' | 'kalshi'
+  notes     String?
+  addedAt   DateTime @default(now())
+  
+  @@unique([userId, marketId])
+  @@index([userId])
+  @@map("watchlist_items")
+}

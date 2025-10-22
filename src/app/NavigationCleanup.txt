@@ -1,0 +1,2 @@
+Note: To remove Kalshi and Arbitrage from the UI, update Navigation.tsx to only show Markets (and optionally Home/Traders placeholders). Arbitrage API routes and libs can be deleted later.
+
