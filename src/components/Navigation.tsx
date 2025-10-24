@@ -14,6 +14,9 @@ export function Navigation() {
             <Link href="/breaking">
               <Button variant="ghost">Breaking</Button>
             </Link>
+            <Link href="/insider-finder">
+              <Button variant="ghost">Insider Finder</Button>
+            </Link>
             <Link href="/leaderboard">
               <Button variant="ghost">Leaderboard</Button>
             </Link>

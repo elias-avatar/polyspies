@@ -41,6 +41,20 @@ export default function Home() {
     }
   };
 
+  // Stable breaking rows derived from pfCards
+  const { rowA, rowB } = React.useMemo(() => {
+    const seen = new Set<string>();
+    const unique = (pfCards || []).filter(c => {
+      const key = c.url || c.title;
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+    return {
+      rowA: unique.filter((_, idx) => idx % 2 === 0),
+      rowB: unique.filter((_, idx) => idx % 2 === 1),
+    };
+  }, [pfCards]);
+
   const fetchPredictFolio = async () => {
     try {
       const res = await fetch('/api/predictfolio', { cache: 'no-store' });
@@ -73,7 +87,7 @@ export default function Home() {
   };
 
   // Auto-scrolling carousel row (no drag interactivity)
-  function MarqueeRow({ items, direction, startAtIndex = 0 }: { items: typeof pfCards; direction: 'left'|'right'; startAtIndex?: number }) {
+  const MarqueeRow = React.memo(function MarqueeRow({ items, direction, startAtIndex = 0 }: { items: typeof pfCards; direction: 'left'|'right'; startAtIndex?: number }) {
     // Rotate order so we can start from any index, then duplicate for seamless loop
     const baseOrder = React.useMemo(() => {
       const arr = items || [];
@@ -98,20 +112,105 @@ export default function Home() {
                 href={c.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="border rounded-lg p-3 flex items-center gap-3 bg-background hover:shadow-md transition w-[380px]"
+                className="border rounded-lg p-3 bg-background hover:shadow-md transition w-[420px] min-w-[420px] flex-none"
               >
-                {c.image && (
-                  <div className="w-16 h-16 flex-shrink-0 overflow-hidden rounded">
-                    <img src={c.image} alt={c.title} className="w-full h-full object-cover" />
+                <div className="w-full">
+                  <div className="flex items-start gap-3">
+                    {c.image && (
+                      <div className="w-16 h-16 flex-shrink-0 overflow-hidden rounded">
+                        <img src={c.image} alt={c.title} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className="font-semibold text-sm leading-snug whitespace-normal break-words"
+                        style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                        title={c.title}
+                      >
+                        {c.title}
+                      </div>
+                      {c.chance && <div className={`text-sm mt-1 ${color}`}>{c.chance}</div>}
+                    </div>
                   </div>
-                )}
-                <div className="min-w-0">
-                  <div className="font-semibold truncate" title={c.title}>{c.title}</div>
-                  {c.chance && <div className={`text-sm mt-1 ${color}`}>{c.chance}</div>}
+                  <BreakingStats url={c.url} />
                 </div>
               </a>
             );
           })}
+        </div>
+      </div>
+    );
+  }, (prev, next) => (
+    prev.direction === next.direction &&
+    prev.startAtIndex === next.startAtIndex &&
+    prev.items === next.items // rely on reference equality
+  ));
+
+  function extractSlug(u: string | undefined) {
+    if (!u) return undefined;
+    const m = u.match(/\/market\/([^?]+)/);
+    return m ? m[1] : undefined;
+  }
+
+  function formatCompactUSD(n?: number) {
+    if (typeof n !== 'number' || Number.isNaN(n)) return '-';
+    try {
+      return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(n).replace(/^/, '$');
+    } catch {
+      if (n >= 1_000_000) return `$${(n/1_000_000).toFixed(2)}M`;
+      if (n >= 1_000) return `$${(n/1_000).toFixed(2)}K`;
+      return `$${n.toFixed(0)}`;
+    }
+  }
+
+  function BreakingStats({ url }: { url?: string }) {
+    const [liquidity, setLiquidity] = React.useState<number | undefined>(undefined);
+    const [vol24, setVol24] = React.useState<number | undefined>(undefined);
+    const [change, setChange] = React.useState<number | undefined>(undefined);
+
+    React.useEffect(() => {
+      const slug = extractSlug(url);
+      if (!slug) return;
+      let alive = true;
+      (async () => {
+        try {
+          const r = await fetch(`/api/market-stats?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
+          if (!r.ok) return;
+          const j = await r.json();
+          if (!alive || !j?.success) return;
+          const d = j.data || {};
+          if (typeof d.liquidity === 'number') setLiquidity(d.liquidity);
+          if (typeof d.volume24h === 'number') setVol24(d.volume24h);
+          if (typeof d.oneDayChange === 'number') setChange(d.oneDayChange);
+        } catch {}
+      })();
+      return () => { alive = false; };
+    }, [url]);
+
+    // Reserve layout: render placeholders until metrics arrive
+    const showPlaceholder = liquidity === undefined && vol24 === undefined;
+
+    const vol = Math.max(0, vol24 || 0);
+    const bias = (typeof change === 'number' ? Math.sign(change) : 0);
+    const buy = bias > 0 ? vol * 0.6 : bias < 0 ? vol * 0.4 : vol * 0.5;
+    const sell = Math.max(0, vol - buy);
+    const buyPct = vol > 0 ? (buy / vol) * 100 : 50;
+    const sellPct = 100 - buyPct;
+
+    return (
+      <div className="mt-2">
+        <div className="w-full rounded-md px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200 text-center">
+          {showPlaceholder ? 'LIQ: —' : `LIQ: ${formatCompactUSD(liquidity)}`}
+        </div>
+        <div className="mt-2 w-full rounded-md overflow-hidden border border-slate-200 bg-background">
+          <div className="flex text-xs font-semibold">
+            <div className="flex items-center justify-center bg-green-100 text-green-700" style={{ width: `${showPlaceholder ? 50 : buyPct}%` }}>
+              {showPlaceholder ? 'Buy: —' : `Buy: ${formatCompactUSD(buy)}`}
+            </div>
+            <div className="flex items-center justify-center bg-red-100 text-red-700" style={{ width: `${showPlaceholder ? 50 : sellPct}%` }}>
+              {showPlaceholder ? 'Sell: —' : `Sell: ${formatCompactUSD(sell)}`}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -135,6 +234,15 @@ export default function Home() {
           </div>
 
           {/* Removed Browse Markets button */}
+
+          {/* One-time animation CSS */}
+          <style jsx global>{`
+            @keyframes pg-scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+            /* Start the rightward row at -50% so the rightmost items are initially visible */
+            @keyframes pg-scroll-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+            .pg-animate-left { animation: pg-scroll-left 36s linear infinite; }
+            .pg-animate-right { animation: pg-scroll-right 38s linear infinite; }
+          `}</style>
 
           {/* Top 3 Traders */}
           {(topLoading || topThree.length > 0) && (
@@ -182,30 +290,12 @@ export default function Home() {
           )}
 
           {/* Breaking marquee rows */}
-          {pfCards.length > 0 && (() => {
-            // Split into two distinct rows without duplicates
-            const seen = new Set<string>();
-            const unique = pfCards.filter(c => {
-              const key = c.url || c.title;
-              if (seen.has(key)) return false;
-              seen.add(key); return true;
-            });
-            const rowA = unique.filter((_, idx) => idx % 2 === 0);
-            const rowB = unique.filter((_, idx) => idx % 2 === 1);
-            return (
+          {(rowA.length + rowB.length) > 0 && (
             <div className="max-w-7xl mx-auto px-8">
               <div className="overflow-hidden"><MarqueeRow items={rowA} direction="left" /></div>
               <div className="overflow-hidden mt-1"><MarqueeRow items={rowB} direction="right" startAtIndex={Math.max(0, rowB.length - 1)} /></div>
-              <style jsx global>{`
-                @keyframes pg-scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-                /* Start the rightward row at -50% so the rightmost items are initially visible,
-                   then move to 0 to reveal items to the left while scrolling right. */
-                @keyframes pg-scroll-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
-                .pg-animate-left { animation: pg-scroll-left 36s linear infinite; }
-                .pg-animate-right { animation: pg-scroll-right 38s linear infinite; }
-              `}</style>
             </div>
-            );})()}
+          )}
         </div>
       </div>
 
