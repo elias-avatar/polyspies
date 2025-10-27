@@ -1,6 +1,8 @@
 "use client";
 
 import useSWR from 'swr';
+import Image from 'next/image';
+import polymarketLogo from '../../../../polymarket.jpeg';
 import { useMemo, useState, use as usePromise } from 'react';
 import {
   LineChart,
@@ -35,6 +37,40 @@ export default function UserProfilePage({ params }: { params: Promise<{ address:
     fetcher,
     { revalidateOnFocus: false }
   );
+
+  // Load leaderboard to find matching PFP for this address
+  const { data: leaderboard } = useSWR(
+    '/api/leaderboard',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
+  const pfpUrl: string | undefined = useMemo(() => {
+    try {
+      const rows = (leaderboard?.data || []) as any[];
+      const addrLc = (address || '').toLowerCase();
+      const match = rows.find((r) => (r?.address || '').toLowerCase() === addrLc);
+      return match?.avatar || undefined;
+    } catch { return undefined; }
+  }, [leaderboard, address]);
+
+  const displayName: string | undefined = useMemo(() => {
+    try {
+      const rows = (leaderboard?.data || []) as any[];
+      const addrLc = (address || '').toLowerCase();
+      const match = rows.find((r) => (r?.address || '').toLowerCase() === addrLc);
+      return match?.name || undefined;
+    } catch { return undefined; }
+  }, [leaderboard, address]);
+
+  const polyUrl: string = useMemo(() => {
+    try {
+      const rows = (leaderboard?.data || []) as any[];
+      const addrLc = (address || '').toLowerCase();
+      const match = rows.find((r) => (r?.address || '').toLowerCase() === addrLc);
+      return match?.polymarketUrl || `https://polymarket.com/profile/${address}`;
+    } catch { return `https://polymarket.com/profile/${address}`; }
+  }, [leaderboard, address]);
 
   const pnl = useMemo(() => {
     const pos = (positions?.data || []) as any[];
@@ -170,13 +206,31 @@ export default function UserProfilePage({ params }: { params: Promise<{ address:
           {/* Left: Profile summary card */}
           <div className="p-4 border rounded-md">
             <div className="flex items-center gap-4 mb-4">
-              <div className="h-12 w-12 rounded-full bg-muted" />
+              {pfpUrl ? (
+                <div className="h-12 w-12 rounded-full overflow-hidden">
+                  <img src={pfpUrl} alt="Profile" className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-muted" />
+              )}
               <div>
-                <h1 className="text-2xl font-bold truncate max-w-[420px]" title={address}>{address}</h1>
-                <p className="text-xs text-muted-foreground">Positions Value: {posValue?.data ? formatUSD(posValue.data[0]?.value || 0) : '-'}</p>
+                <h1 className="text-2xl font-bold truncate max-w-[420px]" title={address}>{displayName || address}</h1>
+                <a href={polyUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center h-5">
+                  <Image src={polymarketLogo} alt="Polymarket" width={20} height={20} className="rounded-sm" />
+                </a>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-3 border rounded-md ring-1 ring-blue-300/50 dark:ring-blue-700/40 bg-blue-50/40 dark:bg-blue-900/10">
+                <p className="text-xs text-muted-foreground">Portfolio Value</p>
+                <p className="text-xl font-bold">{posValue?.data ? formatUSD(posValue.data[0]?.value || 0) : '-'}</p>
+              </div>
+              <div className="p-3 border rounded-md">
+                <p className="text-xs text-muted-foreground">Predictions</p>
+                <p className="text-xl font-bold">{traded?.data?.traded ?? '-'}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 border rounded-md">
                 {(() => {
                   const arr = ((positions?.data || []) as any[]).map(p => typeof p.realizedPnl === 'number' ? p.realizedPnl : 0);
@@ -191,16 +245,6 @@ export default function UserProfilePage({ params }: { params: Promise<{ address:
                     </>
                   );
                 })()}
-              </div>
-              <div className="p-3 border rounded-md">
-                <p className="text-xs text-muted-foreground">Predictions</p>
-                <p className="text-xl font-bold">{traded?.data?.traded ?? '-'}</p>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-3 border rounded-md">
-                <p className="text-xs text-muted-foreground">Unrealized PnL</p>
-                <p className="text-xl font-bold">{positions ? formatUSD(pnl.totalCashPnl) : '-'}</p>
               </div>
               <div className="p-3 border rounded-md">
                 <p className="text-xs text-muted-foreground">Realized PnL</p>

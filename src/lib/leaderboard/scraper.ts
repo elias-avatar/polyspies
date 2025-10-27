@@ -13,13 +13,48 @@ export type LeaderRow = {
   polymarketUrl?: string;
 };
 
-export async function scrapePredictingTop(): Promise<LeaderRow[]> {
+export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'): Promise<LeaderRow[]> {
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
     await page.goto('https://predicting.top/', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-testid="leaderboard-table"] tbody tr', { timeout: 15000 });
+
+    // Try to switch timeframe if requested and wait for change in table content
+    if (timeframe && timeframe !== 'daily') {
+      try {
+        const initialFingerprint = await page.$$eval('[data-testid="leaderboard-table"] tbody tr', (trs) =>
+          trs.map(tr => (tr as HTMLElement).innerText.trim()).join('\n')
+        );
+
+        const targetLabel = timeframe === 'weekly' ? 'weekly' : 'monthly';
+
+        // Strategy 1: Click by visible text
+        try {
+          await page.evaluate((label) => {
+            const els = Array.from(document.querySelectorAll('button, a, [role="button"]')) as HTMLElement[];
+            const found = els.find(el => (el.innerText || el.textContent || '').trim().toLowerCase().includes(label));
+            if (found) (found as HTMLElement).click();
+          }, targetLabel);
+        } catch {}
+
+        // Strategy 2: data-testid patterns
+        try {
+          const testid = timeframe === 'weekly' ? '[data-testid*="weekly"]' : '[data-testid*="monthly"]';
+          const el = await page.$(testid);
+          if (el) { await el.click({ force: true }); }
+        } catch {}
+
+        // Strategy 3: small delay, then ensure table updated
+        await page.waitForFunction((prev) => {
+          const now = Array.from(document.querySelectorAll('[data-testid="leaderboard-table"] tbody tr')).map(tr => (tr as HTMLElement).innerText.trim()).join('\n');
+          return now && now !== prev;
+        }, initialFingerprint, { timeout: 4000 });
+      } catch {
+        // ignore if timeframe switch fails; fallback to current table
+      }
+    }
     const rows = await page.$$eval('[data-testid="leaderboard-table"] tbody tr', (trs) => {
       const toText = (el: Element | null | undefined) => el ? (el as HTMLElement).innerText.trim() : undefined;
       return trs.map((tr) => {

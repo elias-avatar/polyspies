@@ -9,8 +9,7 @@ export function Navigation() {
           <Link href="/" className="text-2xl font-bold">
             PolyGuild
           </Link>
-          
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
             <Link href="/breaking">
               <Button variant="ghost">Breaking</Button>
             </Link>
