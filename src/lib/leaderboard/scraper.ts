@@ -14,8 +14,21 @@ export type LeaderRow = {
 };
 
 export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'): Promise<LeaderRow[]> {
-  const { chromium } = await import('playwright');
-  const browser = await chromium.launch({ headless: true });
+  // Prefer a serverless-compatible Chromium when available (Vercel/AWS Lambda)
+  const { chromium: pwChromium } = await import('playwright');
+  let browser: import('playwright').Browser | null = null;
+  try {
+    try {
+      const awsChromium = await import('@sparticuz/chromium');
+      const executablePath = await (awsChromium as any).executablePath();
+      const headless = (awsChromium as any).headless ?? true;
+      const args = (awsChromium as any).args ?? [];
+      browser = await pwChromium.launch({ headless, args, executablePath });
+    } catch {
+      // Fallback to bundled Playwright Chromium (useful locally)
+      browser = await pwChromium.launch({ headless: true });
+    }
+    if (!browser) throw new Error('Failed to launch Chromium');
   try {
     const page = await browser.newPage();
     await page.goto('https://predicting.top/', { waitUntil: 'domcontentloaded' });
@@ -79,7 +92,7 @@ export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'
     });
     return rows;
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 }
 
