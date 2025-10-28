@@ -29,9 +29,4 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Helper to expose cached data for pages if needed
-export function getBreakingCache() {
-  return cache;
-}
-
-
+// Note: Do not export additional symbols from route files.
