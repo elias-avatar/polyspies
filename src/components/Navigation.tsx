@@ -5,8 +5,6 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
-import appStoreImg from "../../../App_Store_(iOS).svg.png";
-import googlePlayImg from "../../../google-play-store-logo-svg-vector.svg";
 
 export function Navigation() {
   const [open, setOpen] = useState(false);
@@ -35,10 +33,10 @@ export function Navigation() {
               </Button>
             </Link>
             <a href="https://apps.apple.com/us/app/polymarket/id6648798962" target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store" className="inline-block">
-              <Image src={appStoreImg} alt="App Store" width={20} height={20} />
+              <Image src="/app-store.svg" alt="App Store" width={20} height={20} />
             </a>
             <a href="https://play.google.com/store/apps/details?id=com.polymarket.android&hl=en_US" target="_blank" rel="noopener noreferrer" aria-label="Get it on Google Play" className="inline-block">
-              <Image src={googlePlayImg as any} alt="Google Play" width={20} height={20} />
+              <Image src="/google-play.svg" alt="Google Play" width={20} height={20} />
             </a>
           </div>
           {/* Mobile menu trigger */}
