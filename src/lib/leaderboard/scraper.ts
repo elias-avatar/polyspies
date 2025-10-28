@@ -29,7 +29,6 @@ export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'
       browser = await pwChromium.launch({ headless: true });
     }
     if (!browser) throw new Error('Failed to launch Chromium');
-  try {
     const page = await browser.newPage();
     await page.goto('https://predicting.top/', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-testid="leaderboard-table"] tbody tr', { timeout: 15000 });
