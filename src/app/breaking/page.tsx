@@ -59,14 +59,14 @@ export default function BreakingPage() {
             <p className="text-sm text-muted-foreground">See the markets that moved the most in the last 24 hours</p>
           </div>
           <div className="flex gap-2">
-            <button className="border rounded-md px-3 py-1 text-sm" onClick={()=> setView(v=> v==='table'?'grid':'table')}>{view==='table'?'Carousel View':'Table View'}</button>
-            {view==='table' && <button className="border rounded-md px-3 py-1 text-sm" onClick={()=>{ setSortKey('none'); setSortDir('desc'); }}>Reset Sort</button>}
+            <button className="border rounded-md px-3 py-1 text-sm" onClick={()=> setView(v=> v==='table'?'grid':'table')}>{view==='table'?'Carousel':'Table'}</button>
+            {view==='table' && <button className="border rounded-md px-3 py-1 text-sm" onClick={()=>{ setSortKey('none'); setSortDir('desc'); }}>Reset</button>}
           </div>
         </div>
 
-        {view==='table' ? (
+            {view==='table' ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border rounded-md">
+            <table className="w-full text-sm border rounded-md hidden md:table">
               <thead className="bg-muted">
                 <tr className="text-left select-none">
                   <th className="p-2 cursor-pointer" onClick={()=>toggleSort('title')}><span className="inline-flex items-center gap-1">Item {sortKey==='title'?(sortDir==='asc'?'▲':'▼'):'↕'}</span></th>
@@ -98,6 +98,24 @@ export default function BreakingPage() {
                 })}
               </tbody>
             </table>
+            {/* Mobile cards grid mirroring trader cards */}
+            <div className="grid grid-cols-3 gap-2 md:hidden mt-2">
+              {enriched.map((c, i) => {
+                const pct = (() => { const m = c.chance?.match(/(\d+)(?=%)/); return m ? parseInt(m[1], 10) : undefined; })();
+                const color = pct === undefined ? 'text-foreground' : pct >= 50 ? 'text-green-600' : 'text-red-600';
+                return (
+                  <a key={`m-${i}`} href={c.url} target="_blank" rel="noopener noreferrer" className="border rounded-lg p-2 aspect-square w-full flex flex-col items-center justify-center text-center">
+                    {c.image && (
+                      <div className="w-10 h-10 rounded overflow-hidden mb-1">
+                        <img src={c.image} alt={c.title} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="text-[11px] font-semibold line-clamp-3">{c.title}</div>
+                    {c.chance && <div className={`text-[11px] ${color}`}>{c.chance}</div>}
+                  </a>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

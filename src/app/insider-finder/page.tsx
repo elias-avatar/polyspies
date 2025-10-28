@@ -1,19 +1,12 @@
-"use client";
-
 export default function InsiderFinderPage() {
-  const HEADER_H = 200; // increased offset to fully hide upstream header
   return (
-    <div className="p-0 m-0 w-screen h-screen relative">
-      {/* Spacer so our page layout accounts for the hidden header area */}
-      <div className="w-screen" style={{ height: HEADER_H }} />
-      {/* Iframe shifted up so its header sits under our spacer */}
-      <iframe
-        src="https://app.polysights.xyz/insider-finder"
-        className="block w-screen"
-        style={{ border: 0, height: `calc(100vh + ${HEADER_H}px)`, marginTop: -HEADER_H }}
-        loading="eager"
-        referrerPolicy="no-referrer"
-      />
+    <div className="min-h-screen p-8 flex items-center justify-center">
+      <div className="max-w-xl w-full border rounded-lg p-6 text-center bg-background">
+        <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 mb-3">🚧</div>
+        <h1 className="text-2xl font-bold mb-2">Insider Finder</h1>
+        <p className="text-muted-foreground mb-4">This page is under construction. We’re building a sleek experience to surface on-chain insider activity soon.</p>
+        <div className="text-xs text-muted-foreground">Check back later for updates.</div>
+      </div>
     </div>
   );
 }

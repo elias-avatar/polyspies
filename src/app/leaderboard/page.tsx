@@ -59,13 +59,13 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="overflow-x-auto -mx-3 sm:mx-0">
-          <table className="w-full border-collapse min-w-full">
+          <table className="w-full border-collapse min-w-full table-fixed">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left p-2 w-16 sm:w-20">Rank</th>
                 <th className="p-2 w-12 sm:w-14"></th>
                 <th className="text-left p-2">Trader</th>
-                <th className="text-left p-2">Social</th>
+                <th className="text-left p-2 hidden md:table-cell">Social</th>
                 <th className="text-left p-2 hidden md:table-cell">Joined</th>
                 <th className="text-right p-2">P&amp;L</th>
               </tr>
@@ -105,7 +105,7 @@ export default function LeaderboardPage() {
                       )}
                     </div>
                   </td>
-                  <td className="p-2 text-sm">
+                  <td className="p-2 text-sm hidden md:table-cell">
                     <div className="flex items-center gap-2">
                       {r.hasTwitter && r.twitterUrl && (
                         <a href={r.twitterUrl} target="_blank" rel="noopener noreferrer" title="Twitter" className="inline-flex items-center justify-center w-7 h-7 rounded-full border hover:bg-muted">X</a>

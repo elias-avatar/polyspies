@@ -6,8 +6,16 @@ import { Navigation } from "@/components/Navigation";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "PolyGuild - Prediction Market Analytics & Arbitrage",
-  description: "Track arbitrage opportunities and top traders across Polymarket and Kalshi",
+  title: {
+    default: "Polyspies",
+    template: "%s | Polyspies",
+  },
+  description: "Track top Polymarket traders and breaking markets.",
+  icons: {
+    icon: "/api/favicon",
+    shortcut: "/api/favicon",
+    apple: "/api/favicon",
+  },
 };
 
 export default function RootLayout({

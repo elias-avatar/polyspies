@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       timestamp: t?.timestamp,
       title: t?.title,
       slug: t?.slug,
+      icon: t?.icon,
       outcome: t?.outcome,
       outcomeIndex: t?.outcomeIndex,
       name: t?.name || t?.pseudonym || t?.proxyWallet,
