@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   },
   description: "Track top Polymarket traders and breaking markets.",
   icons: {
-    icon: "/api/favicon",
-    shortcut: "/api/favicon",
-    apple: "/api/favicon",
+    icon: "/polyspies.png",
+    shortcut: "/polyspies.png",
+    apple: "/polyspies.png",
   },
 };
 

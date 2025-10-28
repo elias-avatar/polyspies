@@ -19,7 +19,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: store.matches });
   }
   try {
-    const r = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/leaderboard/daily`, { cache: 'no-store' });
+    const base = process.env.NEXT_PUBLIC_BASE_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const r = await fetch(`${base}/api/leaderboard/daily`, { cache: 'no-store' });
     const j = await r.json();
     const addrs = new Set<string>(Array.isArray(j?.data) ? j.data.map((x: any) => String(x?.address || '').toLowerCase()) : []);
     const official = store.matches.filter(m => addrs.has(m.createdBy.toLowerCase()));

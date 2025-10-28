@@ -7,7 +7,6 @@ import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import appStoreImg from "../../../App_Store_(iOS).svg.png";
 import googlePlayImg from "../../../google-play-store-logo-svg-vector.svg";
-import polyBullLogo from "../../../polyspies.png";
 
 export function Navigation() {
   const [open, setOpen] = useState(false);
@@ -17,7 +16,7 @@ export function Navigation() {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Link href="/" className="inline-flex items-center gap-2" aria-label="Home">
-              <Image src={polyBullLogo} alt="Polyspies" width={28} height={28} className="rounded" />
+              <Image src="/polyspies.png" alt="Polyspies" width={28} height={28} className="rounded" />
               <span className="text-2xl font-bold">Polyspies</span>
             </Link>
           </div>
