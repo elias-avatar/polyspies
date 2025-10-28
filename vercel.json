@@ -1,12 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/scan-arbitrage",
-      "schedule": "*/5 * * * *"
-    },
-    {
       "path": "/api/cron/breaking",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
