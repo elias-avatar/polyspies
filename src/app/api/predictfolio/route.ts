@@ -135,10 +135,21 @@ async function predictFolioAPI(limit: number = 24): Promise<Array<{ title: strin
 }
 
 async function predictFolioHeadless(limit: number = 24): Promise<Array<{ title: string; url: string; image?: string; chance?: string }>> {
-  // Note: Requires Playwright in the environment. Locally: npm i and run `npx playwright install chromium` once.
-  const { chromium } = await import('playwright');
-  const browser = await chromium.launch({ headless: true });
+  // Serverless-friendly Playwright: use playwright-core + @sparticuz/chromium in prod
+  const { chromium: pwChromium } = await import('playwright-core');
+  let browser: any | null = null;
   try {
+    try {
+      const mod = await import('@sparticuz/chromium');
+      const chromium = (mod as any).default ?? mod;
+      const executablePath = await chromium.executablePath();
+      const headless = chromium.headless ?? true;
+      const args = chromium.args ?? [];
+      browser = await pwChromium.launch({ headless, args, executablePath });
+    } catch {
+      browser = await pwChromium.launch({ headless: true });
+    }
+    if (!browser) throw new Error('Failed to launch Chromium');
     const page = await browser.newPage();
     await page.goto('https://predictfolio.com/dashboard', { waitUntil: 'domcontentloaded' });
     // Wait for the container to appear and populate
@@ -158,7 +169,7 @@ async function predictFolioHeadless(limit: number = 24): Promise<Array<{ title: 
     }));
     return (anchors || []).filter(x => x.url && x.title).slice(0, limit);
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
   }
 }
 
