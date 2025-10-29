@@ -26,8 +26,18 @@ export async function GET(req: NextRequest) {
     const looksLoading = /Fetching latest insider trades/i.test(fixed) || fixed.length < 500;
     if (looksLoading) {
       try {
-        const { chromium } = await import('playwright');
-        const browser = await chromium.launch({ headless: true });
+        const { chromium: pwChromium } = await import('playwright-core');
+        let browser: any | null = null;
+        try {
+          const mod = await import('@sparticuz/chromium');
+          const chromium = (mod as any).default ?? mod;
+          const executablePath = await chromium.executablePath();
+          const headless = chromium.headless ?? true;
+          const args = chromium.args ?? [];
+          browser = await pwChromium.launch({ headless, args, executablePath });
+        } catch {
+          browser = await pwChromium.launch({ headless: true });
+        }
         const page = await browser.newPage();
         await page.goto(upstream, { waitUntil: 'networkidle' });
         // Wait for at least one market link (card content) to appear
@@ -36,7 +46,7 @@ export async function GET(req: NextRequest) {
           const m = document.querySelector('main');
           return m ? m.outerHTML : '';
         });
-        await browser.close();
+        if (browser) await browser.close();
         if (mainHtmlRendered && mainHtmlRendered.length > 0) {
           fixed = absolutizeUrls(mainHtmlRendered, 'https://app.polysights.xyz');
         }
