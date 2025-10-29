@@ -14,18 +14,25 @@ export type LeaderRow = {
 };
 
 export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'): Promise<LeaderRow[]> {
-  // Serverless-friendly: puppeteer-core + @sparticuz/chromium
-  const puppeteer = (await import('puppeteer-core')).default;
-  const chromiumMod = await import('@sparticuz/chromium');
-  const chromium: any = (chromiumMod as any).default ?? chromiumMod;
-  const executablePath: string = (await chromium.executablePath()) || process.env.CHROMIUM_PATH || '/var/task/chromium';
-  const headless: boolean = chromium.headless ?? true;
-  const args: string[] = chromium.args ?? [];
-  const browser = await puppeteer.launch({ headless, args, executablePath });
+  // Try fast static HTML scrape first (no headless needed)
   try {
-    const page = await browser.newPage();
-    await page.goto('https://predicting.top/', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('[data-testid="leaderboard-table"] tbody tr', { timeout: 15000 });
+    const staticRows = await scrapeStatic(timeframe);
+    if (staticRows.length > 0) return staticRows;
+  } catch {}
+
+  // Fallback: puppeteer-core + @sparticuz/chromium
+  try {
+    const puppeteer = (await import('puppeteer-core')).default;
+    const chromiumMod = await import('@sparticuz/chromium');
+    const chromium: any = (chromiumMod as any).default ?? chromiumMod;
+    const executablePath: string = (await chromium.executablePath()) || process.env.CHROMIUM_PATH || '/var/task/chromium';
+    const headless: boolean = chromium.headless ?? true;
+    const args: string[] = chromium.args ?? [];
+    const browser = await puppeteer.launch({ headless, args, executablePath });
+    try {
+      const page = await browser.newPage();
+      await page.goto('https://predicting.top/', { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('[data-testid="leaderboard-table"] tbody tr', { timeout: 15000 });
 
     // Try to switch timeframe if requested and wait for change in table content
     if (timeframe && timeframe !== 'daily') {
@@ -61,7 +68,7 @@ export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'
         // ignore if timeframe switch fails; fallback to current table
       }
     }
-    const rows = await page.$$eval('[data-testid="leaderboard-table"] tbody tr', (trs) => {
+      const rows = await page.$$eval('[data-testid="leaderboard-table"] tbody tr', (trs) => {
       const toText = (el: Element | null | undefined) => el ? (el as HTMLElement).innerText.trim() : undefined;
       return trs.map((tr) => {
         const rank = toText(tr.querySelector('[data-testid^="text-rank-"]')) || '0';
@@ -82,11 +89,43 @@ export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'
         const hasKalshi = !!tr.querySelector('[data-testid^="button-kalshi-"]');
         return { rank: Number(rank), avatar, name, joined, pnl, profileUrl, address, hasTwitter, hasPolymarket, hasKalshi, twitterUrl, polymarketUrl };
       });
-    });
-    return rows;
-  } finally {
-    await browser.close();
+      });
+      return rows;
+    } finally {
+      await browser.close();
+    }
+  } catch (e) {
+    // If headless also fails, return static scrape (may be partial)
+    return await scrapeStatic('daily');
   }
+}
+
+async function scrapeStatic(timeframe?: 'daily'|'weekly'|'monthly'): Promise<LeaderRow[]> {
+  // predicting.top is often SSR; attempt plain HTML parse (daily only reliably)
+  if (timeframe && timeframe !== 'daily') timeframe = 'daily';
+  const res = await fetch('https://predicting.top/', { headers: { 'User-Agent': 'Mozilla/5.0' }, cache: 'no-store' });
+  const html = await res.text();
+  const tableMatch = html.match(/<table[^>]*data-testid="leaderboard-table"[\s\S]*?<\/table>/i);
+  const table = tableMatch ? tableMatch[0] : html;
+  const rows: LeaderRow[] = [];
+  const trRegex = /<tr[\s\S]*?<\/tr>/gi;
+  const toText = (s?: string) => (s || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+  for (const m of table.matchAll(trRegex)) {
+    const tr = m[0];
+    const rank = Number((tr.match(/data-testid="text-rank-[^"]*"[^>]*>([^<]+)/)?.[1] || '0').trim());
+    const name = toText(tr.match(/data-testid="text-trader-name-[^"]*"[\s\S]*?>([^<]+)/)?.[1]);
+    const joined = toText(tr.match(/data-testid="text-joined-[^"]*"[\s\S]*?>([^<]+)/)?.[1]);
+    const pnl = toText(tr.match(/data-testid="text-pnl-[^"]*"[\s\S]*?>([^<]+)/)?.[1]);
+    const avatar = tr.match(/data-testid="avatar-img-trader-[^"]*"[^>]*src="([^"]+)"/i)?.[1];
+    const address = tr.match(/href="\/account\/([^"?]+)/i)?.[1];
+    const hasTwitter = /data-testid="button-twitter-/.test(tr);
+    const hasPolymarket = /data-testid="button-polymarket-/.test(tr);
+    const twitterUrl = tr.match(/data-testid="button-twitter-[^"]*"[\s\S]*?href="([^"]+)"/i)?.[1];
+    const polymarketUrl = tr.match(/data-testid="button-polymarket-[^"]*"[\s\S]*?href="([^"]+)"/i)?.[1] || (address ? `https://polymarket.com/profile/${address}` : undefined);
+    if (!name) continue;
+    rows.push({ rank, name, pnl, avatar, joined, address, hasTwitter, hasPolymarket, hasKalshi: /button-kalshi-/.test(tr), twitterUrl, polymarketUrl });
+  }
+  return rows.filter(r => !!r.name);
 }
 
 
