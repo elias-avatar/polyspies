@@ -19,10 +19,11 @@ export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'
   let browser: import('playwright').Browser | null = null;
   try {
     try {
-      const awsChromium = await import('@sparticuz/chromium');
-      const executablePath = await (awsChromium as any).executablePath();
-      const headless = (awsChromium as any).headless ?? true;
-      const args = (awsChromium as any).args ?? [];
+      const mod = await import('@sparticuz/chromium');
+      const chromium = (mod as any).default ?? mod;
+      const executablePath = await chromium.executablePath();
+      const headless = chromium.headless ?? true;
+      const args = chromium.args ?? [];
       browser = await pwChromium.launch({ headless, args, executablePath });
     } catch {
       // Fallback to bundled Playwright Chromium (useful locally)
