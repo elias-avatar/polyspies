@@ -14,22 +14,15 @@ export type LeaderRow = {
 };
 
 export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'): Promise<LeaderRow[]> {
-  // Prefer a serverless-compatible Chromium when available (Vercel/AWS Lambda)
-  const { chromium: pwChromium } = await import('playwright-core');
-  let browser: any | null = null;
+  // Serverless-friendly: puppeteer-core + @sparticuz/chromium
+  const puppeteer = (await import('puppeteer-core')).default;
+  const chromiumMod = await import('@sparticuz/chromium');
+  const chromium: any = (chromiumMod as any).default ?? chromiumMod;
+  const executablePath: string = (await chromium.executablePath()) || process.env.CHROMIUM_PATH || '/var/task/chromium';
+  const headless: boolean = chromium.headless ?? true;
+  const args: string[] = chromium.args ?? [];
+  const browser = await puppeteer.launch({ headless, args, executablePath });
   try {
-    try {
-      const mod = await import('@sparticuz/chromium');
-      const chromium = (mod as any).default ?? mod;
-      const resolvedPath = (await chromium.executablePath()) || process.env.CHROMIUM_PATH || '/var/task/chromium';
-      const headless = chromium.headless ?? true;
-      const args = chromium.args ?? [];
-      browser = await pwChromium.launch({ headless, args, executablePath: resolvedPath });
-    } catch {
-      // Fallback to bundled Playwright Chromium (useful locally)
-      browser = await pwChromium.launch({ headless: true });
-    }
-    if (!browser) throw new Error('Failed to launch Chromium');
     const page = await browser.newPage();
     await page.goto('https://predicting.top/', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-testid="leaderboard-table"] tbody tr', { timeout: 15000 });
@@ -56,14 +49,14 @@ export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'
         try {
           const testid = timeframe === 'weekly' ? '[data-testid*="weekly"]' : '[data-testid*="monthly"]';
           const el = await page.$(testid);
-          if (el) { await el.click({ force: true }); }
+          if (el) { await el.click(); }
         } catch {}
 
         // Strategy 3: small delay, then ensure table updated
         await page.waitForFunction((prev) => {
           const now = Array.from(document.querySelectorAll('[data-testid="leaderboard-table"] tbody tr')).map(tr => (tr as HTMLElement).innerText.trim()).join('\n');
           return now && now !== prev;
-        }, initialFingerprint, { timeout: 4000 });
+        }, { timeout: 4000 }, initialFingerprint);
       } catch {
         // ignore if timeframe switch fails; fallback to current table
       }
@@ -92,7 +85,7 @@ export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'
     });
     return rows;
   } finally {
-    if (browser) await browser.close();
+    await browser.close();
   }
 }
 

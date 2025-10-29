@@ -136,20 +136,14 @@ async function predictFolioAPI(limit: number = 24): Promise<Array<{ title: strin
 
 async function predictFolioHeadless(limit: number = 24): Promise<Array<{ title: string; url: string; image?: string; chance?: string }>> {
   // Serverless-friendly Playwright: use playwright-core + @sparticuz/chromium in prod
-  const { chromium: pwChromium } = await import('playwright-core');
-  let browser: any | null = null;
+  const puppeteer = (await import('puppeteer-core')).default;
+  const mod = await import('@sparticuz/chromium');
+  const chromium: any = (mod as any).default ?? mod;
+  const executablePath = (await chromium.executablePath()) || process.env.CHROMIUM_PATH || '/var/task/chromium';
+  const headless = chromium.headless ?? true;
+  const args = chromium.args ?? [];
+  const browser = await puppeteer.launch({ headless, args, executablePath });
   try {
-    try {
-      const mod = await import('@sparticuz/chromium');
-      const chromium = (mod as any).default ?? mod;
-      const executablePath = (await chromium.executablePath()) || process.env.CHROMIUM_PATH || '/var/task/chromium';
-      const headless = chromium.headless ?? true;
-      const args = chromium.args ?? [];
-      browser = await pwChromium.launch({ headless, args, executablePath });
-    } catch {
-      browser = await pwChromium.launch({ headless: true });
-    }
-    if (!browser) throw new Error('Failed to launch Chromium');
     const page = await browser.newPage();
     await page.goto('https://predictfolio.com/dashboard', { waitUntil: 'domcontentloaded' });
     // Wait for the container to appear and populate
@@ -169,7 +163,7 @@ async function predictFolioHeadless(limit: number = 24): Promise<Array<{ title: 
     }));
     return (anchors || []).filter(x => x.url && x.title).slice(0, limit);
   } finally {
-    if (browser) await browser.close();
+    await browser.close();
   }
 }
 
