@@ -15,8 +15,8 @@ export type LeaderRow = {
 
 export async function scrapePredictingTop(timeframe?: 'daily'|'weekly'|'monthly'): Promise<LeaderRow[]> {
   // Prefer a serverless-compatible Chromium when available (Vercel/AWS Lambda)
-  const { chromium: pwChromium } = await import('playwright');
-  let browser: import('playwright').Browser | null = null;
+  const { chromium: pwChromium } = await import('playwright-core');
+  let browser: any | null = null;
   try {
     try {
       const mod = await import('@sparticuz/chromium');
