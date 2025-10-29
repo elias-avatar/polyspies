@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
         try {
           const mod = await import('@sparticuz/chromium');
           const chromium = (mod as any).default ?? mod;
-          const executablePath = await chromium.executablePath();
+          const executablePath = (await chromium.executablePath()) || process.env.CHROMIUM_PATH || '/var/task/chromium';
           const headless = chromium.headless ?? true;
           const args = chromium.args ?? [];
           browser = await pwChromium.launch({ headless, args, executablePath });
